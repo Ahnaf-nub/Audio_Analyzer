@@ -51,25 +51,29 @@ async def analyze_audio(file: UploadFile = File(...)):
         json={"inputs": transcription}
     )
     sentiment_results = response.json()
-
-    # Debug: Print the sentiment results
-    print("Sentiment Results:", sentiment_results)
-
-    # Perform summarization using Hugging Face API
-    response = requests.post(
-        "https://api-inference.huggingface.co/models/facebook/bart-large-cnn",
-        headers={"Authorization": f"Bearer {HUGGINGFACE_API_KEY}"},
-        json={"inputs": transcription}
-    )
-    summary_results = response.json()
-
-    sentiment = [SentimentResult(label=result[0][0]['label']) for result in sentiment_results]
+    top_sentiment = max(sentiment_results[0], key=lambda x: x['score'])
+    sentiment_label = top_sentiment['label']
+    sentiment_score = top_sentiment['score']
     
-    return AnalysisResult(
-        sentiment=sentiment,
-        summary=summary_results[0]['summary_text']
-    )
+    # Check if the length of the transcription is greater than 300 characters
+    if len(transcription) > 300:
+        # Perform summarization using Hugging Face API
+        response = requests.post(
+            "https://api-inference.huggingface.co/models/facebook/bart-large-cnn",
+            headers={"Authorization": f"Bearer {HUGGINGFACE_API_KEY}"},
+            json={"inputs": transcription}
+        )
+        summary_results = response.json()
 
+        # Convert summary results to human readable format
+        summary_text = summary_results[0]['summary_text']
+    else:
+        summary_text = ""
+
+    return AnalysisResult(
+        sentiment=[SentimentResult(label=sentiment_label, score=sentiment_score)],
+        summary=summary_text
+    )
 # Mount the static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
