@@ -4,3 +4,4 @@ soundfile
 requests
 jinja2
 python-multipart
+numpy
